@@ -1,331 +1,193 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { CalendarCheck, ChevronDown, ChevronUp, Clock3, MessageSquareText, ShieldCheck } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RichTextEditor } from '@/components/RichTextEditor';
-import { Save, Calendar, Eye, Maximize2, Minimize2, Loader2, Sparkles } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useStudent } from '@/contexts/StudentContext';
-import { getJournalSuggestions, type JournalEntry as JournalEntryType } from '@/services/api';
 
-interface JournalEntry {
+interface CheckIn {
   id: string;
+  safety: number;
+  note: string;
   date: string;
-  title: string;
-  content: string;
-  preview: string;
-  timestamp: number;
 }
+
+const safetyLabels = ['Not safe', 'A little safe', 'Somewhat safe', 'Mostly safe', 'Very safe'];
 
 export const Journal: React.FC = () => {
   const { studentId } = useStudent();
-  const [currentEntry, setCurrentEntry] = useState('');
-  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [suggestion, setSuggestion] = useState<string>('');
-  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [selectedSafety, setSelectedSafety] = useState<number | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [note, setNote] = useState('');
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
 
-  // Get user-specific storage key
-  const getStorageKey = () => {
-    if (!studentId) return null;
-    return `journalEntries_${studentId}`;
-  };
+  const storageKey = `checkIns_${studentId || 'demo_victim'}`;
 
-  // Load entries from localStorage on component mount or when studentId changes
   useEffect(() => {
-    const storageKey = getStorageKey();
-    if (!storageKey) {
-      // No user logged in, clear entries
-      setEntries([]);
+    const savedCheckIns = localStorage.getItem(storageKey);
+    if (!savedCheckIns) {
+      setCheckIns([]);
       return;
     }
 
-    const savedEntries = localStorage.getItem(storageKey);
-    if (savedEntries) {
-      try {
-        const parsed = JSON.parse(savedEntries);
-        // Convert old format to new format if needed
-        const converted = parsed.map((entry: any) => ({
-          ...entry,
-          preview: entry.content?.replace(/<[^>]*>?/gm, '').substring(0, 50) + '...' || 'No preview',
-          date: entry.date || new Date(entry.timestamp).toLocaleDateString()
-        }));
-        setEntries(converted);
-      } catch (error) {
-        console.error('Error parsing journal entries:', error);
-        setEntries([]);
-      }
-    } else {
-      setEntries([]);
+    try {
+      setCheckIns(JSON.parse(savedCheckIns));
+    } catch {
+      setCheckIns([]);
     }
-  }, [studentId]);
+  }, [storageKey]);
 
-  // Load suggestions when entries change
   useEffect(() => {
-    const loadSuggestions = async () => {
-      console.log('📝 Journal: Loading suggestions', { studentId, entriesCount: entries.length });
-      
-      if (!studentId) {
-        console.log('📝 Journal: No studentId, setting default message');
-        setSuggestion('Start writing in your journal to receive personalized suggestions!');
-        return;
-      }
+    localStorage.setItem(storageKey, JSON.stringify(checkIns));
+  }, [checkIns, storageKey]);
 
-      if (entries.length === 0) {
-        console.log('📝 Journal: No entries, setting default message');
-        setSuggestion('Start writing in your journal to receive personalized suggestions!');
-        return;
-      }
+  const handleSubmit = () => {
+    if (!selectedSafety) {
+      toast.error('Please select how safe you feel today.');
+      return;
+    }
 
-      setIsLoadingSuggestion(true);
-      try {
-        console.log('📝 Journal: Calling getJournalSuggestions API', { studentId, entriesCount: entries.length });
-        const response = await getJournalSuggestions(studentId, entries as JournalEntryType[]);
-        console.log('📝 Journal: Received suggestion:', response.suggestion);
-        setSuggestion(response.suggestion);
-      } catch (error) {
-        console.error('❌ Journal: Error loading suggestions:', error);
-        setSuggestion('Take a moment today to reflect on what you\'re grateful for. Consider writing about something positive that happened recently.');
-      } finally {
-        setIsLoadingSuggestion(false);
-      }
+    const newCheckIn: CheckIn = {
+      id: Date.now().toString(),
+      safety: selectedSafety,
+      note: note.trim(),
+      date: new Date().toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
     };
 
-    loadSuggestions();
-  }, [studentId, entries]);
-
-  // Save entries to localStorage whenever entries change (only if user is logged in)
-  useEffect(() => {
-    const storageKey = getStorageKey();
-    if (!storageKey) {
-      // No user logged in, don't save
-      return;
-    }
-
-    if (entries.length > 0) {
-      localStorage.setItem(storageKey, JSON.stringify(entries));
-    } else {
-      // If entries array is empty, we might want to keep the key or remove it
-      // For now, we'll keep it to preserve the fact that this user has accessed the journal
-    }
-  }, [entries, studentId]);
-
-  const handleSaveEntry = async () => {
-    if (!studentId) {
-      toast.error('Please log in to save journal entries');
-      return;
-    }
-
-    if (!currentEntry.trim() || currentEntry === '<p></p>') {
-      toast.error('Please write something before saving');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      // Strip HTML for preview
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = currentEntry;
-      const plainText = tempDiv.textContent || tempDiv.innerText || '';
-
-      const newEntry: JournalEntry = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric'
-        }),
-        title: `Entry - ${new Date().toLocaleDateString()}`,
-        content: currentEntry,
-        preview: plainText.substring(0, 50) + '...',
-        timestamp: Date.now()
-      };
-
-      setEntries([newEntry, ...entries]);
-      setCurrentEntry('');
-      setSelectedEntry(null);
-      toast.success('Entry saved!');
-    } catch (error) {
-      console.error('Error saving:', error);
-      toast.error('Failed to save entry');
-    } finally {
-      setIsSaving(false);
-    }
+    setCheckIns((current) => [newCheckIn, ...current]);
+    setSelectedSafety(null);
+    setNote('');
+    setIsShareOpen(false);
+    toast.success('Check-in recorded. Thank you for sharing.');
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
+  const progress = Math.min(checkIns.length * 20, 100);
 
   return (
     <DashboardLayout userType="student">
-      <div className="space-y-6">
-        {/* Overlay when expanded */}
-        {isExpanded && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setIsExpanded(false)}
-          />
-        )}
-
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-wellness-calm to-wellness-serene bg-clip-text text-transparent">
-              My Journal
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Write down your thoughts, experiences, and reflections
-            </p>
-          </div>
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-400 mb-3">Regular wellbeing check-in</p>
+          <h1 className="text-4xl font-bold text-white">Check-ins</h1>
+          <p className="text-lg text-gray-300 mt-3">
+            A short, private way to tell us how you are feeling today.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Journal Writing Area */}
-          <div className={`lg:col-span-2 space-y-6 ${isExpanded ? 'z-50 relative' : ''}`}>
-            {/* Write Journal Entry */}
-            <div className={isExpanded ? 'fixed inset-4 lg:inset-8 z-50' : ''}>
-              <Card className={`glass-card border-wellness-calm/20 ${isExpanded ? 'h-full flex flex-col' : ''}`}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-wellness-calm">
-                      <Calendar className="w-5 h-5" />
-                      New Journal Entry
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsExpanded(!isExpanded)}
-                      className="h-8 w-8"
-                    >
-                      {isExpanded ? (
-                        <Minimize2 className="w-4 h-4" />
-                      ) : (
-                        <Maximize2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </CardHeader>
+        <div className="grid lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-6">
+          <Card className="glass-card border-cyan-400/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <CalendarCheck className="w-5 h-5 text-cyan-400" />
+                Today's check-in
+              </CardTitle>
+              <CardDescription>How safe do you feel today?</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-5 gap-2">
+                {[1, 2, 3, 4, 5].map((value) => {
+                  const isSelected = selectedSafety === value;
 
-                <CardContent className={`space-y-4 ${isExpanded ? 'flex-1 flex flex-col' : ''}`}>
-                  <div className={isExpanded ? 'flex-1 overflow-y-auto' : ''}>
-                    <RichTextEditor
-                      content={currentEntry}
-                      onChange={setCurrentEntry}
-                      minHeight={isExpanded ? 'calc(100vh - 280px)' : '300px'}
-                      placeholder="What's on your mind today? Write about your thoughts, feelings, experiences, or anything you'd like to reflect on..."
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSelectedSafety(value)}
+                      aria-label={`${value} out of 5: ${safetyLabels[value - 1]}`}
+                      className={`rounded-xl border p-3 text-center transition-all duration-200 ${
+                        isSelected
+                          ? 'border-cyan-300 bg-cyan-400/20 text-cyan-200'
+                          : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                      }`}
+                    >
+                      <span className="block text-xl font-semibold">{value}</span>
+                      <span className="block text-[11px] mt-1 leading-tight">{safetyLabels[value - 1]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsShareOpen((open) => !open)}
+                  className="w-full flex items-center justify-between gap-3 p-4 text-left text-gray-200"
+                  aria-expanded={isShareOpen}
+                >
+                  <span>Want to share more? (optional)</span>
+                  {isShareOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {isShareOpen && (
+                  <div className="px-4 pb-4">
+                    <Textarea
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      placeholder="Anything you would like your support team to know?"
+                      className="min-h-28 bg-black/10 border-white/10 text-white placeholder:text-gray-500"
                     />
                   </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button onClick={handleSaveEntry} className="flex items-center gap-2" disabled={isSaving}>
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      {isSaving ? 'Saving...' : 'Save Entry'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Selected Entry View */}
-            {selectedEntry && (
-              <Card className="glass-card border-wellness-peaceful/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-wellness-peaceful">
-                    <Eye className="w-5 h-5" />
-                    {selectedEntry.title}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(selectedEntry.date)}
-                  </p>
-                </CardHeader>
-
-                <CardContent>
-                  <div
-                    className="prose prose-sm max-w-none text-foreground"
-                    dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
-                  />
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Sidebar - Previous Entries & AI Insights */}
-          <div className="space-y-6">
-            {/* Previous Entries */}
-            <Card className="glass-card border-wellness-serene/20">
-              <CardHeader>
-                <CardTitle className="text-wellness-serene">Previous Entries</CardTitle>
-              </CardHeader>
-
-              <CardContent className="space-y-3">
-                {entries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    onClick={() => {
-                      setSelectedEntry(entry);
-                      setCurrentEntry('');
-                    }}
-                    className="p-3 rounded-lg border border-muted/50 hover:border-wellness-serene/50 cursor-pointer transition-all duration-300 hover:bg-muted/20"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">{entry.title}</h4>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(entry.date)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {entry.preview}
-                    </p>
-                  </div>
-                ))}
-                {entries.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No entries yet. Start writing!
-                  </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* AI Insights - Daily Suggestions */}
-            <Card className="glass-card border-wellness-peaceful/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-wellness-peaceful">
-                  <Sparkles className="w-5 h-5" />
-                  AI Insights
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-                  <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-wellness-peaceful" />
-                    Daily Suggestion
-                  </h4>
-                  {isLoadingSuggestion ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating suggestion...
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {suggestion}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <Button onClick={handleSubmit} className="w-full bg-cyan-500 hover:bg-cyan-600 text-gray-950">
+                Submit check-in
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Clock3 className="w-5 h-5 text-violet-300" />
+                Your progress
+              </CardTitle>
+              <CardDescription>Keep a gentle rhythm of checking in.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Progress value={progress} className="h-3 bg-white/10" />
+              <p className="text-sm text-gray-300">
+                {checkIns.length} check-in{checkIns.length === 1 ? '' : 's'} recorded
+              </p>
+              <div className="flex items-start gap-3 text-sm text-gray-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                Your responses are kept private and can help identify when extra support may be useful.
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        <Card className="glass-card border-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <MessageSquareText className="w-5 h-5 text-cyan-400" />
+              Previous check-ins
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {checkIns.length === 0 ? (
+              <p className="text-sm text-gray-400">Your completed check-ins will appear here.</p>
+            ) : (
+              checkIns.slice(0, 5).map((checkIn) => (
+                <div key={checkIn.id} className="flex items-start justify-between gap-4 rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div>
+                    <p className="font-medium text-white">
+                      Safety: {checkIn.safety}/5 · {safetyLabels[checkIn.safety - 1]}
+                    </p>
+                    {checkIn.note && <p className="text-sm text-gray-400 mt-1">{checkIn.note}</p>}
+                  </div>
+                  <span className="text-xs text-gray-500 shrink-0">{checkIn.date}</span>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

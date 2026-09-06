@@ -90,7 +90,7 @@ export const BookSession: React.FC = () => {
       rating: 4.8,
       experience: '6 years',
       available: true,
-      bio: 'Focuses on helping students navigate academic and social challenges.'
+      bio: 'Focuses on helping victims navigate legal and wellbeing challenges.'
     },
     {
       id: '3',

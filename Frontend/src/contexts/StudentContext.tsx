@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
+export type AuthorityRole = 'counsellor' | 'district' | 'state' | 'national';
+
+const isAuthorityRole = (value: string | null): value is AuthorityRole =>
+  value === 'counsellor' || value === 'district' || value === 'state' || value === 'national';
+
 interface StudentContextType {
   studentId: string | null;
   setStudentId: (id: string | null) => void;
+  authorityRole: AuthorityRole | null;
+  setAuthorityRole: (role: AuthorityRole | null) => void;
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
@@ -16,7 +23,7 @@ export const StudentProvider: React.FC<{ children: ReactNode }> = ({ children })
       const storedStudentId = localStorage.getItem('studentId');
       const adminId = localStorage.getItem('admin_id');
       const adminCommunityMode = localStorage.getItem('admin_community_mode') === 'true';
-      
+
       // CRITICAL: Student credentials ALWAYS take precedence
       if (studentToken && storedStudentId && !storedStudentId.startsWith('admin_')) {
         // If admin flags exist but student token is present, clear admin flags
@@ -25,15 +32,21 @@ export const StudentProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
         return storedStudentId;
       }
-      
+
       // Only use admin ID if no student token exists and admin community mode is active
       if (adminCommunityMode && adminToken && adminId && !studentToken) {
         return adminId;
       }
-      
+
       return null;
     }
     return null;
+  });
+
+  const [authorityRole, setAuthorityRoleState] = useState<AuthorityRole | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const storedRole = localStorage.getItem('authorityRole');
+    return isAuthorityRole(storedRole) ? storedRole : null;
   });
 
   // Sync with localStorage on mount - support both students and admins
@@ -45,7 +58,7 @@ export const StudentProvider: React.FC<{ children: ReactNode }> = ({ children })
         const storedStudentId = localStorage.getItem('studentId');
         const adminId = localStorage.getItem('admin_id');
         const adminCommunityMode = localStorage.getItem('admin_community_mode') === 'true';
-        
+
         // CRITICAL: Student credentials ALWAYS take precedence
         if (studentToken && storedStudentId && !storedStudentId.startsWith('admin_')) {
           // If admin flags exist but student token is present, clear admin flags
@@ -70,15 +83,21 @@ export const StudentProvider: React.FC<{ children: ReactNode }> = ({ children })
           // Both tokens removed, clear state
           setStudentIdState(null);
         }
+
+        const storedRole = localStorage.getItem('authorityRole');
+        const nextRole = isAuthorityRole(storedRole) ? storedRole : null;
+        if (nextRole !== authorityRole) {
+          setAuthorityRoleState(nextRole);
+        }
       }
     };
 
     syncWithStorage();
-    
+
     // Listen for storage changes (e.g., from another tab)
     window.addEventListener('storage', syncWithStorage);
     return () => window.removeEventListener('storage', syncWithStorage);
-  }, [studentId]);
+  }, [authorityRole, studentId]);
 
   const setStudentId = (id: string | null) => {
     setStudentIdState(id);
@@ -94,8 +113,19 @@ export const StudentProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const setAuthorityRole = (role: AuthorityRole | null) => {
+    setAuthorityRoleState(role);
+    if (typeof window !== 'undefined') {
+      if (role) {
+        localStorage.setItem('authorityRole', role);
+      } else {
+        localStorage.removeItem('authorityRole');
+      }
+    }
+  };
+
   return (
-    <StudentContext.Provider value={{ studentId, setStudentId }}>
+    <StudentContext.Provider value={{ studentId, setStudentId, authorityRole, setAuthorityRole }}>
       {children}
     </StudentContext.Provider>
   );
@@ -108,7 +138,3 @@ export const useStudent = () => {
   }
   return context;
 };
-
-
-
-

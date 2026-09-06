@@ -93,7 +93,7 @@ export const StudentDashboard: React.FC = () => {
         {/* Welcome Header */}
         <div className="glass-card p-8 text-center tilt-card">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-4 text-reveal-item">
-            Welcome Back, Student!
+            Welcome Back, Victim!
           </h1>
           <p className="text-xl text-gray-300 mb-6">
             Your mental wellness journey continues here

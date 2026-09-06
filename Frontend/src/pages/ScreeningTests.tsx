@@ -114,7 +114,7 @@ export const ScreeningTests = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">12</div>
-              <p className="text-xs text-muted-foreground">Students need attention</p>
+              <p className="text-xs text-muted-foreground">Victims need attention</p>
             </CardContent>
           </Card>
         </div>

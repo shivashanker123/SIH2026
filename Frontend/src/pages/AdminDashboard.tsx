@@ -3,7 +3,7 @@
  * 
  * This component displays the admin dashboard with:
  * - Recent alerts from students
- * - Statistics cards (Total Students, Active Sessions, etc.)
+ * - Statistics cards (Total Victims, Active Sessions, etc.)
  * - Monthly and daily wellness trend graphs
  * 
  * IMPLEMENTATION NOTES:
@@ -22,7 +22,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Community } from '@/components/Community';
-import { StudentProvider } from '@/contexts/StudentContext';
+import { StudentProvider, useStudent } from '@/contexts/StudentContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +56,7 @@ import { getDashboardStats, getMonthlyWellness, getDailyWellness } from '@/servi
  * Stats Card Data Template
  * Expected format:
  * {
- *   title: string,        // e.g., "Total Students"
+ *   title: string,        // e.g., "Total Victims"
  *   value: string,        // e.g., "1,234" (formatted number)
  *   change: string,       // e.g., "+12%" or "-5%"
  *   icon: ReactComponent, // Lucide icon component
@@ -135,6 +135,8 @@ type DailyWellnessData = {
 };
 
 export const AdminDashboard: React.FC = () => {
+  const { authorityRole } = useStudent();
+  const authorityLabel = authorityRole === 'counsellor' ? 'Counsellor' : authorityRole === 'district' ? 'District Authority' : authorityRole === 'state' ? 'State Authority' : authorityRole === 'national' ? 'National Authority' : 'Admin';
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCommunityMode, setIsCommunityMode] = useState(false);
@@ -198,7 +200,7 @@ export const AdminDashboard: React.FC = () => {
           const statsData = statsResult.value;
           const statsCards: StatCard[] = [
             {
-              title: "Total Students",
+              title: "Total Victims",
               value: statsData.total_students.toString(),
               change: "+0%",
               icon: Users,
@@ -359,7 +361,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-wellness-serene to-wellness-peaceful bg-clip-text text-transparent mb-4">
-            Wellness Analytics Dashboard
+            {authorityLabel} Wellness Analytics Dashboard
           </h1>
           <p className="text-xl text-muted-foreground">
             Monitor student wellness trends and manage counseling services
@@ -630,7 +632,7 @@ export const AdminDashboard: React.FC = () => {
                 <>
                   <Card className="glass-card border-0 tilt-card hover:shadow-2xl transition-all duration-500">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                      <CardTitle className="text-sm font-medium">Total Victims</CardTitle>
                       <Users className="h-5 w-5 text-blue-600" />
                     </CardHeader>
                     <CardContent>

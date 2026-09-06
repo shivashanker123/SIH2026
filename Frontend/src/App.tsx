@@ -3,18 +3,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { StudentProvider } from "./contexts/StudentContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { HavenLandingPage } from "./pages/HavenLandingPage";
 import { OriginalLandingPage } from "./pages/OriginalLandingPage";
+import { AuthoritySelection } from "./pages/AuthoritySelection";
+import { AuthorityPlaceholderDashboard } from "./pages/AuthorityPlaceholderDashboard";
+import { AdminLogin } from "./pages/AdminLogin";
 import { PersonalCare } from "./pages/PersonalCare";
 import { Resources } from "./pages/Resources";
 import { SelfCare } from "./pages/SelfCare";
-import { StudentLogin } from "./pages/StudentLogin";
-import { AdminLogin } from "./pages/AdminLogin";
+import { Compensation } from "./pages/Compensation";
 import { BookSession } from "./pages/BookSession";
 import { ScreeningTests } from "./pages/ScreeningTests";
 import { Results } from "./pages/Results";
@@ -35,8 +37,8 @@ const AdminDashboard = lazy(() => {
         throw new Error(`AdminDashboard export not found. Available exports: ${Object.keys(module).join(', ')}`);
       }
       console.log('✅ AdminDashboard component found');
-      return { 
-        default: module.AdminDashboard 
+      return {
+        default: module.AdminDashboard
       };
     })
     .catch(err => {
@@ -47,7 +49,7 @@ const AdminDashboard = lazy(() => {
       // Return a component that shows the actual error for debugging
       const errorMessage = err?.message || 'Unknown error';
       const errorName = err?.name || 'Error';
-      return { 
+      return {
         default: () => (
           <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-8">
             <div className="text-center space-y-4 max-w-2xl">
@@ -65,18 +67,33 @@ const AdminDashboard = lazy(() => {
                   </details>
                 )}
               </div>
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
               >
                 Refresh Page
               </button>
             </div>
           </div>
-        ) 
+        )
       };
     });
 });
+
+const AdminDashboardView = () => (
+  <Suspense fallback={
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Loading dashboard...</p>
+      </div>
+    </div>
+  }>
+    <ErrorBoundary>
+      <AdminDashboard />
+    </ErrorBoundary>
+  </Suspense>
+);
 
 const queryClient = new QueryClient();
 
@@ -93,50 +110,65 @@ const App = () => {
             <Routes>
               <Route path="/" element={<HavenLandingPage />} />
               <Route path="/mindcare" element={<OriginalLandingPage />} />
-              <Route path="/student-login" element={<StudentLogin />} />
-              <Route path="/admin-login" element={<AdminLogin />} />
-              <Route 
-                path="/student-dashboard" 
+              {/* Temporary auth bypass: login links open dashboards directly. */}
+              <Route path="/student-login" element={<Navigate to="/student-dashboard" replace />} />
+              <Route path="/authority-selection" element={<AuthoritySelection />} />
+              <Route path="/admin-login" element={<Navigate to="/authority-selection" replace />} />
+              <Route path="/admin-login/:authorityRole" element={<AdminLogin />} />
+              <Route path="/dashboard/counsellor" element={<AdminDashboardView />} />
+              <Route path="/dashboard/district" element={<AuthorityPlaceholderDashboard role="district" />} />
+              <Route path="/dashboard/state" element={<AuthorityPlaceholderDashboard role="state" />} />
+              <Route path="/dashboard/national" element={<AuthorityPlaceholderDashboard role="national" />} />
+              <Route
+                path="/student-dashboard"
                 element={
                   <ProtectedRoute>
                     <PersonalCare />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/student-dashboard/resources" 
+              <Route
+                path="/student-dashboard/resources"
                 element={
                   <ProtectedRoute>
                     <Resources />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/student-dashboard/self-care" 
+              <Route
+                path="/student-dashboard/self-care"
                 element={
                   <ProtectedRoute>
                     <SelfCare />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/student-dashboard/journal" 
+              <Route
+                path="/student-dashboard/journal"
                 element={
                   <ProtectedRoute>
                     <Journal />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/student-dashboard/booking" 
+              <Route
+                path="/student-dashboard/compensation"
+                element={
+                  <ProtectedRoute>
+                    <Compensation />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/student-dashboard/booking"
                 element={
                   <ProtectedRoute>
                     <BookSession />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/admin-dashboard" 
+              <Route
+                path="/admin-dashboard"
                 element={
                   <Suspense fallback={
                     <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
@@ -150,18 +182,18 @@ const App = () => {
                       <AdminDashboard />
                     </ErrorBoundary>
                   </Suspense>
-                } 
+                }
               />
               <Route path="/admin-dashboard/resources" element={<Resources />} />
               <Route path="/admin-dashboard/results" element={<Results />} />
               <Route path="/admin-dashboard/requests" element={<StudentRequests />} />
-              <Route 
-                path="/admin-dashboard/community" 
+              <Route
+                path="/admin-dashboard/community"
                 element={
                   <ProtectedRoute>
                     <Community onToggle={() => window.history.back()} />
                   </ProtectedRoute>
-                } 
+                }
               />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

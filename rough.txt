@@ -1,0 +1,125 @@
+CONTEXT:
+This is the "Haven" mental health platform (SIH project, formerly MindCare). It currently has:
+- A landing page with two buttons: "Student Portal" and "Counselor / Admin"
+- A Student Dashboard (wellness score, charts, AI chatbot, journaling, community, resources)
+- An Admin Dashboard (wellness analytics, alerts, student requests)
+
+I'm repurposing this into a victim-monitoring system for a different problem statement 
+(SC/ST Atrocities Act victim wellbeing monitoring under NHAA). Do NOT create a new project — 
+modify the existing codebase in place, following its existing code style, state management, 
+and folder structure.
+
+Before making any changes, first explore and report back:
+1. The exact file path of the landing page component containing the "Student Portal" / 
+   "Counselor / Admin" buttons
+2. The exact file path(s) of the Student Dashboard and its child components 
+   (wellness chart, chatbot, journal, community, resources)
+3. The exact file path(s) of the Admin Dashboard and its routing logic
+4. What routing library is used (React Router / Next.js routing / other) and how 
+   role-based routes are currently defined
+5. Whether auth state is stored in context, a state manager (Redux/Zustand), or 
+   local component state
+
+Once you've reported the above, implement the following two tasks:
+
+--------------------------------------------------------
+TASK 1: Multi-authority selection screen on Admin/Counselor login
+--------------------------------------------------------
+Current behavior: clicking "Counselor / Admin" on the landing page goes directly to a 
+single Admin Dashboard/login.
+
+New behavior: clicking "Counselor / Admin" should NOT go directly to a dashboard. Instead:
+1. Show a new intermediate screen titled "Select your authority level" 
+   (visually consistent with the existing landing page — same dark theme, same card 
+   style as the existing feature cards on the landing page).
+2. Show 4 selectable cards, each representing an authority tier:
+   - "Counsellor" — subtitle: "Full case detail, direct victim contact"
+   - "District Authority" — subtitle: "District-level case monitoring"
+   - "State Authority" — subtitle: "State-level aggregated analytics"
+   - "National Authority" — subtitle: "National policy-level analytics"
+3. Clicking a card takes the user to a login form (reuse the existing admin login 
+   form component if one exists — just parameterize it with the selected role) 
+   and, on successful login, routes to a dashboard scoped to that role.
+4. Store the selected role in the same auth state mechanism already used in this app 
+   (whatever you found in exploration step 5) as a new field, e.g. `authorityRole: 
+   "counsellor" | "district" | "state" | "national"`.
+5. For now, create 4 separate dashboard route stubs if they don't exist 
+   (/dashboard/counsellor, /dashboard/district, /dashboard/state, /dashboard/national). 
+   The Counsellor dashboard should reuse the existing Admin Dashboard component/logic 
+   as its base (rename references from "Admin" to "Counsellor" in UI text only, keep 
+   underlying logic). For District/State/National, create placeholder dashboard 
+   components with the existing dashboard's layout shell (header, sidebar, Overview/
+   Analytics/Reports tabs) but with placeholder "Coming soon" content in place of 
+   the actual widgets — I will fill these in a separate task.
+6. Do not change the "Student Portal" button or its flow in this task.
+
+--------------------------------------------------------
+TASK 2: Convert Student Dashboard into Victim Dashboard
+--------------------------------------------------------
+Rename all UI-facing text from "Student" to "Victim" (e.g. sidebar label, page titles, 
+"Student User" profile label → "Victim"). Do NOT rename internal variable/prop names 
+or file names unless trivial — focus on user-facing strings first, then tell me 
+which internal names you'd need to rename for consistency and I'll confirm before 
+you do a deeper rename.
+
+Within the Victim Dashboard sidebar, make these specific changes:
+1.KEEP the "Community" icon/entry point exactly where it currently is in the UI 
+   (top-right area, same icon, same visual placement as the existing implementation). 
+   However, REPLACE its underlying behavior entirely — do not keep the current 
+   community/posts/profile-viewing logic. Instead:
+   - Remove any existing "view user profiles" or "view other users' posts" logic 
+     and any component that displays another user's identity/username alongside 
+     their content.
+   - Build a new "Support Space" view behind this icon with:
+     a) A small fixed set of topic categories shown as cards (e.g. "Coping with 
+        court delays", "Talking to family", "Staying hopeful") — hardcode these 
+        as constants for now, no need for a backend.
+     b) Clicking a topic shows a feed of short, anonymized reflection entries 
+        (mock/placeholder text for now, no author name or avatar shown at all — 
+        just the text and a relative timestamp like "2 days ago").
+     c) At the bottom, an input box labeled "Share something (reviewed before 
+        it's visible to others)" — on submit, show a toast: "Thanks for sharing. 
+        Your post will appear after a quick review." Do NOT add it to the visible 
+        feed immediately — this must visually communicate that posts are moderated, 
+        not live-published. No actual backend/moderation queue needed yet, just 
+        this UI behavior.
+   - Do not implement any user-to-user messaging, following, profile pages, or 
+     avatars anywhere in this feature.
+2. RENAME "Journal" to "Check-ins" and change its default view: instead of a free-text 
+   journal entry box, show a short scheduled check-in card with:
+   - A 1-5 scale selector (buttons or slider) for "How safe do you feel today?"
+   - An optional expandable free-text field below it labeled "Want to share more? 
+     (optional)" that is collapsed by default
+   - A "Submit check-in" button
+   Keep the existing chat history and any progress bar you find in the current 
+   Journal page structure — just adapt it around this new check-in flow.
+3. ADD a new sidebar item: "My Compensation" with an icon (use whatever icon library 
+   is already imported in the project, e.g. lucide-react if that's what's used). 
+   This page should show a static, hardcoded list for now (2-3 example scheme cards) with:
+   - Scheme name
+   - A status pill: "Applied" / "Under Review" / "Sanctioned" / "Disbursed" 
+     (color-coded, use whatever color/badge system already exists in the app)
+   - A one-line plain-language description of what the scheme covers
+   Make this a self-contained new component; don't wire it to real data yet — 
+   just build the UI shell with mock data as props/constants at the top of the file.
+4. ADD a persistent, always-visible "Emergency / I'm in danger" button in the 
+   sidebar, styled distinctly (e.g. red/danger accent, using whatever the existing 
+   design system uses for warning/danger states). On click, show a confirmation 
+   modal asking "Are you in immediate danger right now?" with two buttons: 
+   "Yes — alert now" and "No, just checking in." Clicking "Yes — alert now" should 
+   (for now) just show a toast/success message "Alert sent to your district 
+   authority" — don't wire real notification logic yet, just build the UI flow.
+5. Keep the wellness score dashboard, charts, AI chatbot, and Resources page 
+   exactly as they are — no changes needed there for this task.
+
+--------------------------------------------------------
+GENERAL RULES:
+--------------------------------------------------------
+- Match existing code conventions (component structure, naming, styling approach — 
+  Tailwind/CSS modules/styled-components, whichever this project already uses).
+- Do not introduce new dependencies unless strictly necessary; if you do, tell me 
+  what and why before adding it.
+- Do not touch the backend/API layer in this task — frontend UI/routing changes only.
+- After each task, list every file you created or modified.
+- If any of my instructions conflict with how the existing code is structured, stop 
+  and ask me rather than guessing.

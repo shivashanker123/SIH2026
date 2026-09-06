@@ -151,7 +151,7 @@ export const SelfCare: React.FC = () => {
     },
     {
       id: '4',
-      title: 'Gratitude Journaling',
+      title: 'Gratitude Reflection',
       description: 'Write down three things you\'re grateful for today.',
       duration: 8,
       category: 'journaling',
@@ -186,7 +186,7 @@ export const SelfCare: React.FC = () => {
     { id: 'breathing', label: 'Breathing', icon: Wind, color: 'from-blue-500 to-cyan-500' },
     { id: 'meditation', label: 'Meditation', icon: Brain, color: 'from-purple-500 to-indigo-500' },
     { id: 'movement', label: 'Movement', icon: Zap, color: 'from-orange-500 to-red-500' },
-    { id: 'journaling', label: 'Journaling', icon: Flower, color: 'from-green-500 to-teal-500' },
+    { id: 'journaling', label: 'Check-ins', icon: Flower, color: 'from-green-500 to-teal-500' },
     { id: 'mindfulness', label: 'Mindfulness', icon: Moon, color: 'from-indigo-500 to-purple-500' }
   ];
 

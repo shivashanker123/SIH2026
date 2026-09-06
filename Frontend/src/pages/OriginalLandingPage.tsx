@@ -125,7 +125,7 @@ export const OriginalLandingPage: React.FC = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="tilt-card">
               <div className="text-4xl font-bold text-cyan-400 mb-2">1000+</div>
-              <div className="text-gray-300">Students Helped</div>
+              <div className="text-gray-300">Victims Supported</div>
             </div>
             <div className="tilt-card">
               <div className="text-4xl font-bold text-cyan-400 mb-2">50+</div>

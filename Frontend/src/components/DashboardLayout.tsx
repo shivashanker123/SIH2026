@@ -33,7 +33,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user
                 size="icon"
                 onClick={onCommunityToggle}
                 className="glass-card hover:scale-110 transition-all duration-300"
-                title="Community Mode"
+                title="Support Space"
               >
                 <Users className="h-4 w-4" />
               </Button>
